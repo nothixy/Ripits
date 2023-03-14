@@ -1,4 +1,4 @@
-# ripits
+# Ripit's
 
 Record audio clips from your life
 
