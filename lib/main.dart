@@ -10,6 +10,7 @@ import 'package:record/record.dart';
 import 'package:ffmpeg_kit_flutter/ffmpeg_kit.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:tuple/tuple.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 void main() {
   runApp(const MyApp());
@@ -65,7 +66,7 @@ class MyHomePage extends StatefulWidget {
   State<MyHomePage> createState() => _MyHomePageState();
 }
 
-class _MyHomePageState extends State<MyHomePage> {
+class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
   var pageIndex = 0;
   var autoRecord = false;
   Record record = Record();
@@ -78,6 +79,7 @@ class _MyHomePageState extends State<MyHomePage> {
   var trimLength = 30;
   var duration = 1.0;
   var songProgress = const Tuple2<double, String>(0.0, "");
+  var brightness = Brightness.light;
 
   Future<String> get _localPath async {
     final directory = await getApplicationDocumentsDirectory();
@@ -191,12 +193,24 @@ class _MyHomePageState extends State<MyHomePage> {
   }
 
   @override
+  void didChangePlatformBrightness() {
+      setState(() {
+        brightness = WidgetsBinding.instance.window.platformBrightness;
+      });
+    super.didChangePlatformBrightness();
+  }
+
+  @override
   void initState() {
-    // TODO: implement initState
+    WidgetsBinding.instance.addObserver(this);
+    brightness = WidgetsBinding.instance.window.platformBrightness;
     listFiles();
     getPrefs().then((prefs) {
       if (!prefs.containsKey('trimlen')) {
         prefs.setInt('trimlen', 30);
+        setState(() {
+          trimLength = 30;
+        });
       } else {
         setState(() {
           trimLength = prefs.getInt('trimlen')!;
@@ -237,14 +251,15 @@ class _MyHomePageState extends State<MyHomePage> {
 
   @override
   void dispose() {
-    // TODO: implement dispose
     endRecording();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    var listPage = ListView(
+    var listPage = fileList.map((x) => x.path).where((x) => x.endsWith('.m4a')).where((x) => !x.contains('/autorec/')).isEmpty ? const Center(
+      child: Text("Start recording"),
+    ) : ListView(
       children: fileList.map((x) => x.path).where((x) => x.endsWith('.m4a')).where((x) => !x.contains('/autorec/')).map((x) =>
       Stack(
         children: [
@@ -334,6 +349,17 @@ class _MyHomePageState extends State<MyHomePage> {
                 });
               },
               value: trimLength,
+            )
+          ],
+        ),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            GestureDetector(
+              onTap: (){
+              launchUrl(Uri.parse('https://github.com/srgoti/Ripits.git'), mode: LaunchMode.externalApplication);
+            },
+            child: Image.asset(brightness == Brightness.light ? 'assets/github-mark.png' : 'assets/github-mark-white.png', width: 50, height: 50,),
             )
           ],
         )
